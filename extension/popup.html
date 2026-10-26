@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0f0f12; --card: #1a1a20; --line: #2a2a33; --text: #ececf1; --dim: #8b8b98;
+    --accent: #ff3b5c; --accent2: #ff7a45; --ok: #3ddc84;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 300px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; padding: 14px; display: grid; gap: 12px; }
+  header { display: flex; align-items: center; justify-content: space-between; }
+  h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; color: transparent; }
+  .pill { font-size: 11px; padding: 3px 8px; border-radius: 99px; background: var(--card); color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+  .pill.on { color: var(--ok); } .pill.on::before { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+  label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+  input { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font: inherit; outline: none; }
+  input:focus { border-color: var(--accent); }
+  button { border: 0; border-radius: 8px; padding: 9px; font: 600 13px system-ui, sans-serif; cursor: pointer; color: var(--text); background: var(--line); transition: filter .15s, transform .05s; }
+  button:hover { filter: brightness(1.2); } button:active { transform: scale(.97); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+  .code { font: 700 26px ui-monospace, monospace; letter-spacing: .15em; text-align: center; padding: 6px; cursor: pointer; border-radius: 8px; }
+  .code:hover { background: var(--bg); }
+  .hint { text-align: center; color: var(--dim); font-size: 11px; }
+  .danger { background: transparent; color: var(--dim); border: 1px solid var(--line); }
+  .danger:hover { color: var(--accent); border-color: var(--accent); }
+  details { color: var(--dim); font-size: 11px; } summary { cursor: pointer; margin-bottom: 6px; }
+  [hidden] { display: none !important; }
+</style>
+
+<header>
+  <h1>synch-mov</h1>
+  <span id="pill" class="pill">offline</span>
+</header>
+
+<section class="card">
+  <label for="name">Your name</label>
+  <input id="name" placeholder="anon" maxlength="24">
+</section>
+
+<section id="lobby" class="card">
+  <button id="create" class="primary">Create a room</button>
+  <div class="hint">or join one</div>
+  <div class="row">
+    <input id="room" placeholder="Room code" maxlength="32" aria-label="Room code">
+    <button id="join" style="flex:0 0 auto">Join</button>
+  </div>
+</section>
+
+<section id="inroom" class="card" hidden>
+  <label>Room code</label>
+  <div id="code" class="code" title="Click to copy" role="button" tabindex="0"></div>
+  <div id="copied" class="hint">click code to copy · share it with friends</div>
+  <input id="chat" placeholder="Send a message… (Enter)" maxlength="300" aria-label="Chat message">
+  <button id="leave" class="danger">Leave room</button>
+</section>
+
+<div id="status" class="hint" role="status"></div>
+
+<details>
+  <summary>Server</summary>
+  <input id="server" aria-label="Server URL">
+</details>
+
+<script src="popup.js"></script>

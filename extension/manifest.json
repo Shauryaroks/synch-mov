@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "synch-mov",
+  "version": "0.1.0",
+  "description": "Watch YouTube in sync with friends.",
+  "permissions": ["storage"],
+  "action": { "default_popup": "popup.html" },
+  "content_scripts": [{ "matches": ["https://www.youtube.com/*"], "js": ["content.js"] }]
+}
