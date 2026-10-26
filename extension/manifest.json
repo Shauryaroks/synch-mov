@@ -3,7 +3,26 @@
   "name": "synch-mov",
   "version": "0.1.0",
   "description": "Watch YouTube in sync with friends.",
-  "permissions": ["storage"],
-  "action": { "default_popup": "popup.html" },
-  "content_scripts": [{ "matches": ["https://www.youtube.com/*"], "js": ["content.js"] }]
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "wss://serv-shaur.tailccb9e1.ts.net/*"
+  ]
 }

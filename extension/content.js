@@ -1,6 +1,6 @@
 // Syncs the page's <video> with a room over WebSocket.
 // ponytail: YouTube-only selector/URL logic lives here; other sites = swap videoId()/video().
-let ws, room, ignoreUntil = 0, chatBox, panel, unread = 0;
+let ws, room, ignoreUntil = 0, chatBox, panel, unread = 0, leading = false;
 
 const video = () => document.querySelector("video");
 const videoId = () => new URLSearchParams(location.search).get("v");
@@ -10,10 +10,25 @@ function connect(s) {
   room = s.room;
   if (!room) return void (ws = null, status({ connected: false }));
   const r = room;
-  ws = new WebSocket(`${s.server}?room=${encodeURIComponent(r)}`);
-  ws.onmessage = (e) => apply(JSON.parse(e.data));
-  ws.onopen = () => { toast(`Joined room ${r}`, "🎬"); status({ connected: true }); };
-  ws.onclose = () => status({ connected: false }) || setTimeout(() => room === r && ws?.readyState === 3 && chrome.storage.local.get(null, connect), 2000);
+  // This tab synced a different video last time → the user navigated here, so lead instead of following.
+  leading = !!sessionStorage.smVid && sessionStorage.smVid !== videoId();
+  if (!s.server || s.server.includes("localhost")) s.server = "wss://serv-shaur.tailccb9e1.ts.net:8443"; // ponytail: same default as popup.js
+  const port = chrome.runtime.connect({ name: JSON.stringify({ server: s.server, room: r }) });
+  ws = { readyState: 0, close: () => port.disconnect(), send: (m) => port.postMessage(JSON.parse(m)) };
+  const me = ws;
+  const closed = () => {
+    if (me.readyState === 3) return;
+    me.readyState = 3;
+    status({ connected: false });
+    setTimeout(() => room === r && ws === me && chrome.storage.local.get(null, connect), 2000);
+  };
+  port.onMessage.addListener(({ ev, data }) => {
+    if (ev === "open") { me.readyState = 1; toast(`Joined room ${r}`, "🎬"); status({ connected: true }); if (leading) setTimeout(sendState, 1000); }
+    if (ev === "msg") apply(JSON.parse(data));
+    if (ev === "error") toast(`Can't reach server ${s.server}`, "⚠️");
+    if (ev === "close") closed();
+  });
+  port.onDisconnect.addListener(closed);
   ws.name = s.name || "anon";
 }
 
@@ -23,7 +38,9 @@ function send(msg) {
 
 function sendState() {
   const v = video();
-  if (!v || Date.now() < ignoreUntil || !videoId()) return;
+  if (!v || Date.now() < ignoreUntil || !videoId() || ws?.readyState !== 1) return;
+  sessionStorage.smVid = videoId();
+  leading = false;
   send({ type: "state", vid: videoId(), t: v.currentTime, paused: v.paused, rate: v.playbackRate, by: ws?.name });
 }
 
@@ -31,7 +48,12 @@ function apply(m) {
   if (m.type === "peers") return (panel.querySelector("#sm-peers").textContent = `· ${m.n} watching`), status({ peers: m.n }) || toast(`${m.n} watching`, "👥");
   if (m.type === "chat") return addMsg(m.by, m.text);
   if (m.type !== "state") return;
-  if (m.vid !== videoId()) return void (location.href = `https://www.youtube.com/watch?v=${m.vid}`);
+  if (m.vid !== videoId()) {
+    if (leading) return;
+    sessionStorage.smVid = m.vid;
+    return void (location.href = `https://www.youtube.com/watch?v=${m.vid}`);
+  }
+  sessionStorage.smVid = m.vid;
   const v = video();
   if (!v) return;
   const t = m.paused ? m.t : m.t + (Date.now() - m.at) / 1000 * m.rate;
@@ -99,13 +121,23 @@ function buildPanel() {
     #sm-input:focus{border-color:#ff3b5c}`;
   const wrap = document.body.appendChild(document.createElement("div"));
   wrap.id = "sm-wrap";
-  wrap.innerHTML = `<style>${css}</style>
-    <button id="sm-btn" aria-label="Toggle watch party chat">💬</button>
-    <section id="sm-panel" hidden aria-label="Watch party chat">
-      <div id="sm-head"><span>Party chat <small id="sm-peers"></small></span><button aria-label="Close chat">×</button></div>
-      <div id="sm-msgs" aria-live="polite"><div class="empty">No messages yet — say hi 👋</div></div>
-      <input id="sm-input" placeholder="Message… (Enter to send)" maxlength="300" aria-label="Chat message">
-    </section>`;
+  // YouTube enforces Trusted Types, so innerHTML throws — build nodes by hand.
+  const el = (tag, props = {}, ...kids) => {
+    const n = Object.assign(document.createElement(tag), props);
+    for (const [k, v] of Object.entries(props)) if (k.startsWith("aria") || k === "id") n.setAttribute(k.replace("aria", "aria-").toLowerCase(), v);
+    n.append(...kids);
+    return n;
+  };
+  wrap.append(
+    el("style", { textContent: css }),
+    el("button", { id: "sm-btn", ariaLabel: "Toggle watch party chat" }, "💬"),
+    el("section", { id: "sm-panel", hidden: true, ariaLabel: "Watch party chat" },
+      el("div", { id: "sm-head" },
+        el("span", {}, "Party chat ", el("small", { id: "sm-peers" })),
+        el("button", { ariaLabel: "Close chat" }, "×")),
+      el("div", { id: "sm-msgs", ariaLive: "polite" }, el("div", { className: "empty" }, "No messages yet — say hi 👋")),
+      el("input", { id: "sm-input", placeholder: "Message… (Enter to send)", maxLength: 300, ariaLabel: "Chat message" })),
+  );
   const $ = (q) => wrap.querySelector(q), p = $("#sm-panel"), btn = $("#sm-btn"), input = $("#sm-input");
   const toggle = (open = p.hidden) => {
     p.hidden = !open;

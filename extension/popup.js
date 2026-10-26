@@ -12,7 +12,9 @@ function render(s) {
 
 chrome.storage.local.get(null, (s) => {
   $("name").value = s.name || "";
-  $("server").value = s.server || DEFAULT_SERVER;
+  // ponytail: v0.1 saved ws://localhost; drop it so old installs reach the real relay.
+  if (!s.server || s.server.includes("localhost")) chrome.storage.local.set({ server: (s.server = DEFAULT_SERVER) });
+  $("server").value = s.server;
   render(s);
 });
 chrome.storage.onChanged.addListener(() => chrome.storage.local.get(null, render));
